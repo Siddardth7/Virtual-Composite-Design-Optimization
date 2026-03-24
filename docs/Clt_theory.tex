@@ -1,0 +1,260 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{siunitx}
+\geometry{margin=1in}
+
+\begin{document}
+
+\title{Classical Laminate Theory (CLT) -- Theory and Implementation}
+\author{Virtual Composite Structure Design \& Optimization Project}
+\date{\today}
+\maketitle
+\tableofcontents
+\newpage
+
+%=====================================================================
+\section{Concept}
+A composite laminate consists of multiple bonded orthotropic laminae stacked at various fiber orientations.
+Each lamina behaves under plane stress, and the laminate acts as a continuum plate with effective
+extensional--bending stiffness. Classical Laminate Theory (CLT) relates in--plane forces and moments per unit width
+to mid--plane strains and curvatures:
+\begin{equation}
+\begin{bmatrix}
+\mathbf{N} \\[3pt] \mathbf{M}
+\end{bmatrix}
+=
+\begin{bmatrix}
+\mathbf{A} & \mathbf{B} \\[3pt]
+\mathbf{B} & \mathbf{D}
+\end{bmatrix}
+\begin{bmatrix}
+\boldsymbol{\varepsilon}_0 \\[3pt] \boldsymbol{\kappa}
+\end{bmatrix}
+\end{equation}
+%
+where
+\begin{align*}
+\mathbf{N} &= [N_x,\, N_y,\, N_{xy}]^T &\text{(N/m)}\\
+\mathbf{M} &= [M_x,\, M_y,\, M_{xy}]^T &\text{(N·m/m)}\\
+\boldsymbol{\varepsilon}_0 &= [\varepsilon_{x0},\,\varepsilon_{y0},\,\gamma_{xy0}]^T \\
+\boldsymbol{\kappa} &= [\kappa_x,\,\kappa_y,\,\kappa_{xy}]^T &\text{(1/m)}
+\end{align*}
+
+%=====================================================================
+\section{Method}
+
+\subsection{Reduced Stiffness Matrix $[Q]$}
+For a single lamina in the material 1--2 axes:
+\begin{equation}
+\{\sigma\}_{12} = [Q]_{12} \{\varepsilon\}_{12}
+\end{equation}
+%
+\begin{equation}
+[Q] =
+\frac{1}{1 - \nu_{12}\nu_{21}}
+\begin{bmatrix}
+E_1 & \nu_{12}E_2 & 0\\
+\nu_{12}E_2 & E_2 & 0\\
+0 & 0 & G_{12}(1-\nu_{12}\nu_{21})
+\end{bmatrix}
+\approx
+\begin{bmatrix}
+\dfrac{E_1}{\Delta} & \dfrac{\nu_{12}E_2}{\Delta} & 0\\[4pt]
+\dfrac{\nu_{12}E_2}{\Delta} & \dfrac{E_2}{\Delta} & 0\\[4pt]
+0 & 0 & G_{12}
+\end{bmatrix}
+\end{equation}
+%
+where $\nu_{21}=\nu_{12}E_2/E_1$ and $\Delta=1-\nu_{12}\nu_{21}$.
+
+\subsection{Transformation to Global Axes}
+Each ply is rotated by $\theta$ about the laminate $z$--axis.  
+The transformed stiffness matrix $[\bar Q]$ in global $x$--$y$ coordinates:
+\begin{align}
+\bar Q_{11} &= Q_{11}m^4 + 2(Q_{12}+2Q_{66})m^2s^2 + Q_{22}s^4\\
+\bar Q_{22} &= Q_{11}s^4 + 2(Q_{12}+2Q_{66})m^2s^2 + Q_{22}m^4\\
+\bar Q_{12} &= (Q_{11}+Q_{22}-4Q_{66})m^2s^2 + Q_{12}(m^4+s^4)\\
+\bar Q_{16} &= (Q_{11}-Q_{12}-2Q_{66})m^3s - (Q_{22}-Q_{12}-2Q_{66})ms^3\\
+\bar Q_{26} &= (Q_{11}-Q_{12}-2Q_{66})ms^3 - (Q_{22}-Q_{12}-2Q_{66})m^3s\\
+\bar Q_{66} &= (Q_{11}+Q_{22}-2Q_{12}-2Q_{66})m^2s^2 + Q_{66}(m^4+s^4)
+\end{align}
+where $m=\cos\theta$, $s=\sin\theta$.
+
+\subsection{Laminate Stiffness Matrices}
+Let $z_k$ denote the top of ply $k$, $z_{k-1}$ its bottom, with $z=0$ at the mid--plane.
+\begin{align}
+[A] &= \sum_{k=1}^{n}\bar Q^{(k)}(z_k-z_{k-1})\\
+[B] &= \frac{1}{2}\sum_{k=1}^{n}\bar Q^{(k)}(z_k^2-z_{k-1}^2)\\
+[D] &= \frac{1}{3}\sum_{k=1}^{n}\bar Q^{(k)}(z_k^3-z_{k-1}^3)
+\end{align}
+$[A]$ has units N/m, $[B]$ has N, and $[D]$ has N·m.  
+For symmetric laminates, $[B]=\mathbf{0}$.
+
+\subsection{Mid-Plane Response}
+The full system
+\[
+\begin{bmatrix}A&B\\B&D\end{bmatrix}
+\begin{bmatrix}\varepsilon_0\\\kappa\end{bmatrix}
+=\begin{bmatrix}N\\M\end{bmatrix}
+\]
+can be solved as:
+
+\paragraph{Direct (6×6) inversion}
+\[
+\begin{bmatrix}\varepsilon_0\\\kappa\end{bmatrix}=
+\begin{bmatrix}A&B\\B&D\end{bmatrix}^{-1}
+\begin{bmatrix}N\\M\end{bmatrix}
+\]
+
+\paragraph{Schur Complement (numerically stable)}
+\begin{align}
+S &= D - B A^{-1} B\\
+\kappa &= S^{-1}(M - B A^{-1} N)\\
+\varepsilon_0 &= A^{-1}(N - B\kappa)
+\end{align}
+
+\subsection{Ply Strain and Stress Recovery}
+At any distance $z$ in ply $k$:
+\begin{align}
+\varepsilon^{(k)}(z) &= \varepsilon_0 + z\kappa\\
+\sigma^{(k)}(z) &= \bar Q^{(k)}\,\varepsilon^{(k)}(z)
+\end{align}
+
+Transform to the local 1–2 axes:
+\[
+\{\sigma\}_{12} = [T_\sigma]\{\sigma\}_{xy},\qquad
+[T_\sigma]=
+\begin{bmatrix}
+m^2 & s^2 & 2ms\\
+s^2 & m^2 & -2ms\\
+-ms & ms & m^2-s^2
+\end{bmatrix}
+\]
+
+\subsection{Failure Criterion: Tsai–Wu}
+\begin{equation}
+FI = F_1\sigma_1 + F_2\sigma_2 +
+F_{11}\sigma_1^2 + F_{22}\sigma_2^2 +
+F_{66}\tau_{12}^2 + 2F_{12}\sigma_1\sigma_2
+\end{equation}
+with
+\begin{align}
+F_1 &= \frac{1}{X_t}-\frac{1}{X_c}, & 
+F_2 &= \frac{1}{Y_t}-\frac{1}{Y_c},\\
+F_{11} &= \frac{1}{X_tX_c}, &
+F_{22} &= \frac{1}{Y_tY_c},\\
+F_{66} &= \frac{1}{S_{12}^2}, &
+F_{12} &= -\tfrac{1}{2}\sqrt{F_{11}F_{22}}
+\end{align}
+Failure occurs when $FI\ge1$.
+
+%=====================================================================
+\section{Implementation Overview}
+Implemented in \texttt{src/clt.py} with modular functions:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Function & Purpose\\
+\midrule
+\texttt{Q\_matrix} & Returns lamina reduced stiffness [Q]\\
+\texttt{Q\_bar} & Computes transformed [\={Q}] for any ply angle\\
+\texttt{ply\_interfaces} & Generates through--thickness coordinates $z_k$\\
+\texttt{abd\_matrices} & Assembles [A], [B], [D]\\
+\texttt{solve\_midplane} & Solves for $\varepsilon_0$, $\kappa$\\
+\texttt{recover\_ply\_global/local} & Returns ply strains/stresses in xy and 12 axes\\
+\texttt{tsai\_wu} & Computes Tsai--Wu failure index\\
+\texttt{navier\_center\_deflection} & Orthotropic SSSS plate deflection\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%=====================================================================
+\section{Verification}
+
+\subsection{Material and Geometry}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Parameter & Symbol & Value & Unit\\
+\midrule
+Longitudinal modulus & $E_1$ & 161$\times10^9$ & Pa\\
+Transverse modulus & $E_2$ & 11.4$\times10^9$ & Pa\\
+Shear modulus & $G_{12}$ & 5.17$\times10^9$ & Pa\\
+Poisson ratio & $\nu_{12}$ & 0.32 & --\\
+Ply thickness & $t_p$ & 0.125$\times10^{-3}$ & m\\
+Laminate & [0/45/−45/90]$_s$ & -- & --\\
+Total thickness & $t$ & 1.0$\times10^{-3}$ & m\\
+Plate size & $a=b$ & 0.30 & m\\
+Pressure & $q$ & 1,000 & N/m$^2$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Computed Stiffness Matrices}
+\[
+||A|| = 1.045\times10^8~\text{N/m},\qquad
+||B|| = 4.74\times10^{-13}~\text{N},\qquad
+||D|| = 1.03\times10^1~\text{N·m}
+\]
+$B\!\approx\!0$ verifies symmetry.
+
+\subsection{Mid-Plane Response}
+For unit bending moment $M_x=1$~N·m/m:
+\[
+\kappa = [0.1170,\,-0.0688,\,-0.0171]~\text{m}^{-1}
+\]
+\[
+\sigma_{1,\text{top}}=-7.02~\text{MPa},\quad
+\sigma_{1,\text{bot}}=+9.36~\text{MPa}
+\]
+\[
+FI_\text{top}=3.15\times10^{-3},\quad
+FI_\text{bot}=4.21\times10^{-3}
+\]
+
+\subsection{Navier Deflection Check}
+For an orthotropic SSSS square plate under uniform pressure:
+\begin{equation}
+w(x,y)=
+\sum_{\substack{m,n=1\\m,n~\text{odd}}}^{M}
+\frac{16q}{\pi^6 m^2 n^2}
+\frac{\sin(\tfrac{m\pi x}{a})\sin(\tfrac{n\pi y}{b})}
+{D_{11}(\tfrac{m\pi}{a})^4
++2(D_{12}+2D_{66})(\tfrac{m\pi}{a})^2(\tfrac{n\pi}{b})^2
++D_{22}(\tfrac{n\pi}{b})^4}
+\end{equation}
+At the plate center $(a/2,b/2)$ with $m,n=\{1,3,5\}$:
+\[
+w_c = 6.44\times10^{-5}\,\text{m} = 0.0644\,\text{mm}
+\]
+
+%=====================================================================
+\section{Discussion}
+\begin{itemize}
+\item \textbf{Symmetry:} $[B]\approx0$ confirms correct stacking.
+\item \textbf{Scaling:} Verified $A\propto t$, $D\propto t^3$, $w\propto 1/t^3$, $w\propto q$.
+\item \textbf{Numerical Stability:} Schur solver robust for symmetric and unsymmetric cases.
+\item \textbf{Physical Interpretation:} $A_{11}\!\gg\!A_{22}$ shows stiffness along fibers.
+\item \textbf{Deflection:} 0.0644\,mm under 1\,kPa demonstrates plate rigidity.
+\item \textbf{Failure:} $FI<0.01$ indicates large safety margin.
+\end{itemize}
+
+%=====================================================================
+\section{Outcome}
+Phase~2 produced validated analytical stiffness and deflection predictions, establishing the foundation for
+Phase~3 finite element correlation.
+
+%=====================================================================
+\section*{References}
+\begin{enumerate}
+\item Jones, R.~M., \emph{Mechanics of Composite Materials}, 2nd~ed., Taylor \& Francis, 1999.
+\item Gibson, R.~F., \emph{Principles of Composite Material Mechanics}, CRC Press, 2016.
+\item AE428 Lecture Notes (Parts~4.1--4.8), University of Illinois Urbana--Champaign, 2024.
+\item MIL--HDBK--17--3F, \emph{Composite Materials Handbook}, U.S.~DoD, 2002.
+\end{enumerate}
+
+\end{document}

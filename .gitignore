@@ -8,8 +8,10 @@ env/
 .ipynb_checkpoints/
 figures/*.png
 figures/*.pdf
+!figures/fea_comparison.png
 data/sweeps/*.csv
 .DS_Store
 fea/abaqus_inputs/*.inp
-fea/results/
+fea/results/*
+!fea/results/fea_summary.csv
 gui/

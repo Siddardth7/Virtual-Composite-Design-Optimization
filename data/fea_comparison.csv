@@ -1,0 +1,3 @@
+Metric,Unit,CLT,FEA,Err_%,PASS
+Deflection,mm,0.064411,0.06378,0.99,True
+σₓₓ (peak),MPa,0.56207,0.5482,2.53,True

@@ -1,0 +1,2 @@
+case_id,deflection_m,sigma_xx_max_Pa,notes
+baseline,6.378e-05,548200.0,CalculiX 2.23 S4 20x20 mesh plate_ss.inp

@@ -147,7 +147,39 @@ def recover_ply_local(eps_xy: np.ndarray, sig_xy: np.ndarray, theta_rad: float) 
     sig_12 = Ts @ sig_xy
     return eps_12, sig_12
 
-# --- Block 6: Tsai–Wu failure index -------------------------
+# --- Block 6: Hashin (1980) failure indices ------------------
+def hashin(stress_local: np.ndarray,
+           X_T: float, X_C: float,
+           Y_T: float, Y_C: float,
+           S12: float) -> dict:
+    """
+    Hashin 1980 failure indices in local (1-2) axes.
+    stress_local = [sigma1, sigma2, tau12] (Pa). Strengths in Pa.
+    Returns dict with FI_FT, FI_FC, FI_MT, FI_MC (each float; 0 when mode inactive).
+
+    Fibre Tension  (FT, σ₁ ≥ 0): FI = (σ₁/X_T)² + (τ₁₂/S₁₂)²
+    Fibre Compr.   (FC, σ₁ < 0): FI = (σ₁/X_C)²
+    Matrix Tension (MT, σ₂ ≥ 0): FI = (σ₂/Y_T)² + (τ₁₂/S₁₂)²
+    Matrix Compr.  (MC, σ₂ < 0): Hashin-Rotem simplified form
+    """
+    s1  = float(stress_local[0])
+    s2  = float(stress_local[1])
+    t12 = float(stress_local[2])
+
+    FI_FT = (s1 / X_T)**2 + (t12 / S12)**2 if s1 >= 0.0 else 0.0
+    FI_FC = (s1 / X_C)**2                   if s1 <  0.0 else 0.0
+    FI_MT = (s2 / Y_T)**2 + (t12 / S12)**2  if s2 >= 0.0 else 0.0
+    if s2 < 0.0:
+        FI_MC = ((s2 / (2.0 * S12))**2
+                 + ((Y_C / (2.0 * S12))**2 - 1.0) * (s2 / Y_C)
+                 + (t12 / S12)**2)
+    else:
+        FI_MC = 0.0
+
+    return {"FI_FT": FI_FT, "FI_FC": FI_FC, "FI_MT": FI_MT, "FI_MC": FI_MC}
+
+
+# --- Block 7: Tsai–Wu failure index -------------------------
 def tsai_wu(sig12: np.ndarray,
             Xt: float, Xc: float,
             Yt: float, Yc: float,
@@ -170,9 +202,17 @@ def tsai_wu(sig12: np.ndarray,
 # --- Block 7: end-to-end laminate evaluator ----------------
 def evaluate_laminate(E1: float, E2: float, G12: float, nu12: float,
                       angles_deg: list[float], ply_t: float,
-                      N: np.ndarray, M: np.ndarray):
+                      N: np.ndarray, M: np.ndarray,
+                      strengths: dict | None = None):
     """
     Returns dict with A,B,D, eps0, kappa, and per-ply local/global results.
+
+    Optional *strengths* dict enables Tsai-Wu and Hashin indices per ply:
+        {"X_T", "X_C", "Y_T", "Y_C", "S12"}  (all in Pa)
+    When provided, each ply entry gains:
+        tsai_wu_top, tsai_wu_bot,
+        hashin_FT_top, hashin_FC_top, hashin_MT_top, hashin_MC_top,
+        hashin_FT_bot, hashin_FC_bot, hashin_MT_bot, hashin_MC_bot
     """
     Q = Q_matrix(E1,E2,G12,nu12)
     qbars = [Q_bar(Q, deg2rad(th)) for th in angles_deg]
@@ -188,7 +228,8 @@ def evaluate_laminate(E1: float, E2: float, G12: float, nu12: float,
         glob = recover_ply_global(eps0, kappa, z_top, z_bot, qbars[k])
         e12_top, s12_top = recover_ply_local(glob["eps_top_xy"], glob["sig_top_xy"], theta)
         e12_bot, s12_bot = recover_ply_local(glob["eps_bot_xy"], glob["sig_bot_xy"], theta)
-        ply_results.append({
+
+        entry = {
             "k": k,
             "theta_deg": angles_deg[k],
             "z_bot": z_bot, "z_top": z_top,
@@ -196,7 +237,22 @@ def evaluate_laminate(E1: float, E2: float, G12: float, nu12: float,
             "sig_top_12": s12_top,            "sig_bot_12": s12_bot,
             "eps_top_xy": glob["eps_top_xy"], "eps_bot_xy": glob["eps_bot_xy"],
             "eps_top_12": e12_top,            "eps_bot_12": e12_bot
-        })
+        }
+
+        if strengths is not None:
+            Xt  = strengths["X_T"]; Xc  = strengths["X_C"]
+            Yt  = strengths["Y_T"]; Yc  = strengths["Y_C"]
+            s12 = strengths["S12"]
+            entry["tsai_wu_top"] = tsai_wu(s12_top, Xt, Xc, Yt, Yc, s12)
+            entry["tsai_wu_bot"] = tsai_wu(s12_bot, Xt, Xc, Yt, Yc, s12)
+            h_top = hashin(s12_top, Xt, Xc, Yt, Yc, s12)
+            h_bot = hashin(s12_bot, Xt, Xc, Yt, Yc, s12)
+            entry["hashin_FT_top"] = h_top["FI_FT"]; entry["hashin_FC_top"] = h_top["FI_FC"]
+            entry["hashin_MT_top"] = h_top["FI_MT"]; entry["hashin_MC_top"] = h_top["FI_MC"]
+            entry["hashin_FT_bot"] = h_bot["FI_FT"]; entry["hashin_FC_bot"] = h_bot["FI_FC"]
+            entry["hashin_MT_bot"] = h_bot["FI_MT"]; entry["hashin_MC_bot"] = h_bot["FI_MC"]
+
+        ply_results.append(entry)
     return {"A":A, "B":B, "D":D, "eps0":eps0, "kappa":kappa, "plies": ply_results}
 
 # --- Block 8: Navier center deflection for SSSS orthotropic ----

@@ -28,7 +28,10 @@ import pandas as pd
 ROOT    = Path(__file__).resolve().parents[1]
 FEA_DIR = ROOT / "fea"
 DATA_DIR = ROOT / "data"
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_SRC = Path(__file__).resolve().parent
+_ROOT = _SRC.parent
+sys.path.insert(0, str(_SRC))
+sys.path.insert(0, str(_ROOT))
 
 from utils import load_materials, deg2rad
 from clt import Ply, laminate_abd, navier_center_deflection

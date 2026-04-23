@@ -21,9 +21,16 @@ _COL_MAPS = [
     ("v12",     ["v12", "nu12", "nu_12", "nu12[-]"]),
     ("density", ["density", "rho", "rho_kgm3", "rho_[kg/m3]"]),
     ("t_ply",   ["t_ply", "ply_t", "ply_t_m", "tply_m"]),
+    # strength columns — optional (not _REQUIRED) so old CSVs still load
+    ("X_T",     ["X_T", "S1T_Pa", "XT", "Xt"]),
+    ("X_C",     ["X_C", "S1C_Pa", "XC", "Xc"]),
+    ("Y_T",     ["Y_T", "S2T_Pa", "YT", "Yt"]),
+    ("Y_C",     ["Y_C", "S2C_Pa", "YC", "Yc"]),
+    ("S12",     ["S12", "S12_Pa", "S_12"]),
 ]
 
-_REQUIRED = {k for k, _ in _COL_MAPS}
+_REQUIRED = {"name", "E1", "E2", "G12", "v12", "density", "t_ply"}
+_STRENGTH  = {"X_T", "X_C", "Y_T", "Y_C", "S12"}
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     cols = {c: c.strip() for c in df.columns}
@@ -53,18 +60,25 @@ def _to_float(df: pd.DataFrame, col: str) -> pd.Series:
 def load_materials(csv_path: Path | None = None) -> pd.DataFrame:
     """
     Load and normalize a materials CSV into canonical columns:
-      name, E1, E2, G12, v12, density, t_ply   (SI units)
+      name, E1, E2, G12, v12, density, t_ply   (SI units, always present)
+      X_T, X_C, Y_T, Y_C, S12                  (strength, Pa — included if CSV has them)
     Accepts variants like E1_Pa, rho_kgm3, ply_t_m, etc., and renames them.
     """
     path = Path(csv_path) if csv_path else (DATA_DIR / "materials.csv")
     df = pd.read_csv(path)
     df = _normalize_columns(df)
 
-    # convert to float
+    # convert stiffness columns to float
     for c in ["E1", "E2", "G12", "v12", "density", "t_ply"]:
         df[c] = _to_float(df, c)
 
-    return df[["name","E1","E2","G12","v12","density","t_ply"]]
+    # convert strength columns to float (if present)
+    present_strength = [c for c in _STRENGTH if c in df.columns]
+    for c in present_strength:
+        df[c] = _to_float(df, c)
+
+    base_cols = ["name", "E1", "E2", "G12", "v12", "density", "t_ply"]
+    return df[base_cols + present_strength]
 
 def deg2rad(angle_deg: float) -> float:
     return math.radians(angle_deg)

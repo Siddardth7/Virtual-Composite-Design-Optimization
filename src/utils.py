@@ -30,7 +30,7 @@ _COL_MAPS = [
 ]
 
 _REQUIRED = {"name", "E1", "E2", "G12", "v12", "density", "t_ply"}
-_STRENGTH  = {"X_T", "X_C", "Y_T", "Y_C", "S12"}
+_STRENGTH  = ("X_T", "X_C", "Y_T", "Y_C", "S12")  # tuple preserves canonical order
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     cols = {c: c.strip() for c in df.columns}

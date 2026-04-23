@@ -216,8 +216,11 @@ def evaluate_laminate(E1: float, E2: float, G12: float, nu12: float,
     """
     Q = Q_matrix(E1,E2,G12,nu12)
     qbars = [Q_bar(Q, deg2rad(th)) for th in angles_deg]
-    total_t = ply_t * len(angles_deg)
-    z_iface = ply_interfaces(len(angles_deg), total_t)
+    n = len(angles_deg)
+    z_iface = np.empty(n + 1, dtype=float)
+    z_iface[0] = -0.5 * ply_t * n
+    for k in range(n):
+        z_iface[k + 1] = z_iface[k] + ply_t
     A,B,D = abd_matrices(qbars, z_iface)
     eps0, kappa = solve_midplane(A,B,D,N,M,method="schur")
 

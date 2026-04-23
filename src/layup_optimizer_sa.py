@@ -7,12 +7,12 @@ Material and ply geometry are loaded from data/materials.csv.
 from __future__ import annotations
 import copy
 import random
+import sys
 from pathlib import Path
 
 import numpy as np
 
-# ── project imports ───────────────────────────────────────────────────────────
-import sys
+# ── project imports (src/ is not a package; path injection required) ──────────
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from clt import Q_matrix, Q_bar, ply_interfaces, abd_matrices, deg2rad
 from utils import load_materials
@@ -74,10 +74,10 @@ def laminate_objective(full_seq: list[int]) -> float:
 
 
 def penalty(full_seq: list[int]) -> float:
-    pen = 0
+    pen: float = 0.0
     N = len(full_seq)
     half = N // 2
-    if not np.allclose(full_seq[:half], full_seq[half:][::-1]):
+    if full_seq[:half] != full_seq[half:][::-1]:
         pen += 1e6
     count_p45 = np.sum(np.array(full_seq) == 45)
     count_m45 = np.sum(np.array(full_seq) == -45)

@@ -115,12 +115,17 @@ def compute_clt_values() -> dict:
             ky  += Wmn * npb**2 * sm * sn
 
     # ── σₓₓ at bottom of 0° ply (z = −t/2) ──────────────────────────────
-    z_bot_ply0 = z[0]                             # most negative z interface
-    Q0   = Q_matrix(E1, E2, G12, v12)
-    Qb0  = Q_bar(Q0, 0.0)                         # 0° ply → no rotation
+    # Full expression: σ = Q̄ · (ε₀ + z · κ)
+    # For symmetric layup under N=0, B=0 → ε₀ = A⁻¹N = 0.
+    # Keeping eps0 explicit makes the code correct for future non-symmetric use.
+    N_vec = np.array([0.0, 0.0, 0.0])
+    eps0  = np.linalg.solve(A, N_vec)              # = [0,0,0] for symmetric + N=0
     kappa = np.array([kx, ky, 0.0])
-    sig_bot = Qb0 @ (z_bot_ply0 * kappa)          # [σxx, σyy, τxy] in Pa
-    sigma_xx_pa = abs(float(sig_bot[0]))           # magnitude (physical = tension)
+    z_bot_ply0 = z[0]
+    Q0  = Q_matrix(E1, E2, G12, v12)
+    Qb0 = Q_bar(Q0, 0.0)
+    sig_bot = Qb0 @ (eps0 + z_bot_ply0 * kappa)   # correct general form
+    sigma_xx_pa = abs(float(sig_bot[0]))
 
     return {
         "deflection_m":    float(w_m),

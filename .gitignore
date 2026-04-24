@@ -16,4 +16,6 @@ fea/abaqus_inputs/*.inp
 fea/results/*
 !fea/results/fea_summary.csv
 gui/
+fea/ccx
+fea/ccx/
 .worktrees/

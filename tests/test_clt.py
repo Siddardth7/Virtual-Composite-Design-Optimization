@@ -150,3 +150,19 @@ class TestEvaluateLaminate:
         res = evaluate_laminate(E1, E2, G12, NU12, angles, T_PLY, N, M)
         total_t = 3 * T_PLY
         assert abs(res["plies"][0]["z_bot"] - (-total_t / 2)) < 1e-15
+
+
+class TestValidation:
+    def test_empty_ply_list_raises(self):
+        with pytest.raises(ValueError, match="at least one ply"):
+            laminate_abd([])
+
+    def test_zero_thickness_raises(self):
+        with pytest.raises(ValueError, match="positive"):
+            evaluate_laminate(E1, E2, G12, NU12, [0], 0.0,
+                              np.zeros(3), np.zeros(3))
+
+    def test_angle_out_of_range_raises(self):
+        with pytest.raises(ValueError, match="90"):
+            evaluate_laminate(E1, E2, G12, NU12, [0, 135], T_PLY,
+                              np.zeros(3), np.zeros(3))

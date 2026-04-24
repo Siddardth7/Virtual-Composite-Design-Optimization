@@ -19,6 +19,27 @@ class Ply:
     theta: float   # radians
     t: float       # m
 
+# --- Input validation helpers --------------------------------
+def _validate_laminate_inputs(angles_deg: list, ply_t: float) -> None:
+    if len(angles_deg) == 0:
+        raise ValueError("Laminate must have at least one ply.")
+    if ply_t <= 0:
+        raise ValueError(f"Ply thickness must be positive; got {ply_t}")
+    for i, th in enumerate(angles_deg):
+        if not (-90.0 <= th <= 90.0):
+            raise ValueError(
+                f"Ply angle at index {i} is {th}°; must be in [−90, 90]."
+            )
+
+def _validate_ply_list(plies: list) -> None:
+    if len(plies) == 0:
+        raise ValueError("Laminate must have at least one ply.")
+    for i, p in enumerate(plies):
+        if p.t <= 0:
+            raise ValueError(f"Ply {i}: thickness must be positive; got {p.t}")
+        if p.E1 <= 0 or p.E2 <= 0 or p.G12 <= 0:
+            raise ValueError(f"Ply {i}: stiffness constants must be positive.")
+
 # --- Block 1: angles and Q ---------------------------------
 def deg2rad(theta_deg: float) -> float:
     return np.deg2rad(theta_deg)
@@ -226,6 +247,7 @@ def evaluate_laminate(E1: float, E2: float, G12: float, nu12: float,
         hashin_FT_top, hashin_FC_top, hashin_MT_top, hashin_MC_top,
         hashin_FT_bot, hashin_FC_bot, hashin_MT_bot, hashin_MC_bot
     """
+    _validate_laminate_inputs(angles_deg, ply_t)
     Q = Q_matrix(E1,E2,G12,nu12)
     qbars = [Q_bar(Q, deg2rad(th)) for th in angles_deg]
     n = len(angles_deg)
@@ -300,6 +322,7 @@ def laminate_abd(plies: List[Ply]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, 
     Assemble ABD for an arbitrary laminate and return (A,B,D,z_interfaces).
     Ply.theta is radians. Ply.t is thickness (m).
     """
+    _validate_ply_list(plies)
     n = len(plies)
     total_t = sum(p.t for p in plies)
     # z from -t/2 to +t/2 with segment lengths equal to each ply thickness

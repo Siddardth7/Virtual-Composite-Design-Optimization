@@ -10,6 +10,7 @@ figures/*.png
 figures/*.pdf
 !figures/fea_comparison.png
 !figures/failure_indices.png
+!figures/laminate_stack.png
 data/sweeps/*.csv
 .DS_Store
 fea/abaqus_inputs/*.inp

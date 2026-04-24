@@ -108,6 +108,13 @@ def baseline():
     df_ply.to_csv(out_csv, index=False)
     print(f"Saved: {out_csv}")
 
+    from visualize import plot_laminate_stack
+    tply = float(mat["t_ply"])
+    figp = plot_laminate_stack(BASE_STACK, tply,
+                               title="[0/45/−45/90]ₛ Baseline Laminate",
+                               out_path=FIG_DIR / "laminate_stack.png")
+    print(f"Saved: {figp}")
+
 def angle_sweep():
     # --- load material ---------------------------------------------------------
     mats = load_materials(DATA_DIR / "materials.csv")

@@ -59,17 +59,16 @@ from layup_optimizer_sa import simulated_annealing
 # CLT evaluation (uses IM7/8552 from materials.csv)
 # ════════════════════════════════════════════════════════════════════════════
 
-def _load_mat():
-    mats = load_materials(DATA_DIR / "materials.csv")
-    m = mats.iloc[0]
-    return (float(m["E1"]), float(m["E2"]), float(m["G12"]),
-            float(m["v12"]), float(m["t_ply"]))
+_mat = load_materials(DATA_DIR / "materials.csv").iloc[0]
+_E1, _E2, _G12, _V12, _TPLY = (
+    float(_mat["E1"]), float(_mat["E2"]), float(_mat["G12"]),
+    float(_mat["v12"]), float(_mat["t_ply"]),
+)
 
 
 def clt_deflection(layup_deg: list[int]) -> float:
     """Navier centre deflection [mm] for the given full stacking sequence."""
-    E1, E2, G12, v12, tply = _load_mat()
-    plies = [Ply(E1, E2, G12, v12, deg2rad(th), tply) for th in layup_deg]
+    plies = [Ply(_E1, _E2, _G12, _V12, deg2rad(th), _TPLY) for th in layup_deg]
     _, _, D, _ = laminate_abd(plies)
     w_m = navier_center_deflection(D, LX, LY, Q_LOAD, max_odd=NAVIER_ODD)
     return w_m * 1e3  # → mm

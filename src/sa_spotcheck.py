@@ -15,6 +15,7 @@ CLT-only mode — CLT ranking is reliable (D06 checkpoint showed <1% CLT/FEA err
 
 from __future__ import annotations
 import copy
+import multiprocessing as mp
 import random
 import subprocess
 import sys
@@ -120,25 +121,33 @@ def fea_deflection(layup_deg: list[int], ccx: str, run_id: str) -> float | None:
 # SA candidate collection
 # ════════════════════════════════════════════════════════════════════════════
 
-def collect_top3() -> list[dict]:
-    """
-    Run SA with multiple seeds, deduplicate by stacking sequence,
-    return top-3 candidates sorted by CLT deflection (ascending = stiffer).
-    """
-    print("Running SA optimizer across multiple seeds …")
-    raw: list[tuple[float, list[int]]] = []
+def _run_seed(args: tuple) -> tuple[float, list[int], list[tuple[int, float]]]:
+    seed, n_iter, temp, cooling = args
+    random.seed(seed)
+    seq, obj, hist = simulated_annealing(
+        n_iterations=n_iter,
+        initial_temp=temp,
+        cooling_rate=cooling,
+    )
+    print(f"  seed={seed:4d}  obj={obj:.4e}  n_plies={len(seq):3d}")
+    return obj, seq, hist
 
+
+def collect_top3() -> tuple[list[dict], list[list[tuple[int, float]]]]:
+    """
+    Run SA with multiple seeds in parallel, deduplicate by stacking sequence,
+    return (top-3 candidates sorted by CLT deflection, all convergence histories).
+    """
+    print(f"Running SA optimizer across {len(SA_SEEDS)} seeds (parallel) …")
+    args = [(s, SA_ITERATIONS, SA_INITIAL_TEMP, SA_COOLING) for s in SA_SEEDS]
+    with mp.Pool(processes=min(len(SA_SEEDS), mp.cpu_count())) as pool:
+        results = pool.map(_run_seed, args)
+
+    raw: list[tuple[float, list[int]]] = []
     all_histories: list[list[tuple[int, float]]] = []
-    for seed in SA_SEEDS:
-        random.seed(seed)
-        seq, obj, hist = simulated_annealing(
-            n_iterations=SA_ITERATIONS,
-            initial_temp=SA_INITIAL_TEMP,
-            cooling_rate=SA_COOLING,
-        )
+    for obj, seq, hist in results:
         raw.append((obj, seq))
         all_histories.append(hist)
-        print(f"  seed={seed:4d}  obj={obj:.4e}  n_plies={len(seq):3d}  {seq}")
 
     # deduplicate (exact sequence match)
     seen: list[list[int]] = []

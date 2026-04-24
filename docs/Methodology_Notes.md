@@ -68,7 +68,7 @@ Implemented in `src/clt.py` → `hashin_failure_indices()`.
 | **Fibre Tension** (σ₁ ≥ 0)  | (σ₁/S₁T)² + (τ₁₂/S₁₂)² | Fibre fracture under tension + shear |
 | **Fibre Compression** (σ₁ < 0) | (σ₁/S₁C)² | Fibre microbuckling / kinking |
 | **Matrix Tension** (σ₂ ≥ 0) | (σ₂/S₂T)² + (τ₁₂/S₁₂)² | Transverse cracking, intralaminar |
-| **Matrix Compression** (σ₂ < 0) | (σ₂/2S₂T)² + [(S₂C²−4S₂T²)σ₂/(4S₂TS₂C)] + (τ₁₂/S₁₂)² | Oblique shear fracture |
+| **Matrix Compression** (σ₂ < 0) | (σ₂/2S₁₂)² + [(Y_C/2S₁₂)²−1](σ₂/Y_C) + (τ₁₂/S₁₂)² | Oblique shear fracture (Hashin–Rotem simplified) |
 
 Index ≥ 1 → that mode has initiated.  The maximum index across all four modes
 and all plies is the overall laminate Hashin index.

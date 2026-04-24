@@ -96,10 +96,22 @@ def solve_midplane(A: np.ndarray, B: np.ndarray, D: np.ndarray,
         sol = np.linalg.solve(K, rhs)
         return sol[:3], sol[3:]
     # Schur complement
-    AinvN = np.linalg.solve(A, N)
-    AinvB = np.linalg.solve(A, B)
+    try:
+        AinvN = np.linalg.solve(A, N)
+        AinvB = np.linalg.solve(A, B)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError(
+            "CLT: in-plane stiffness matrix A is singular. "
+            "Check that the laminate has at least one non-zero ply and valid material properties."
+        ) from exc
     S = D - B @ AinvB
-    kappa = np.linalg.solve(S, M - B @ AinvN)
+    try:
+        kappa = np.linalg.solve(S, M - B @ AinvN)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError(
+            "CLT: Schur complement of ABD system is singular. "
+            "This can occur for laminates with extreme coupling (B ≈ D)."
+        ) from exc
     eps0  = AinvN - AinvB @ kappa
     return eps0, kappa
 
@@ -274,6 +286,11 @@ def navier_center_deflection(D: np.ndarray, a: float, b: float, q: float,
             mpa = (m*np.pi)/a
             npb = (n*np.pi)/b
             denom = D11*mpa**4 + 2.0*(D12 + 2.0*D66)*mpa**2*npb**2 + D22*npb**4
+            if abs(denom) < 1e-30:
+                raise ValueError(
+                    f"Navier series: near-zero denominator at m={m}, n={n}. "
+                    f"Check that D11 and D22 are both positive (degenerate laminate?)."
+                )
             w += (16.0*q)/(np.pi**6 * m**2 * n**2) * (1.0/denom)
     return w
 

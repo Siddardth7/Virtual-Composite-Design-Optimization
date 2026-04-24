@@ -29,7 +29,7 @@ class TestOptimizerMaterial:
         import random
         import layup_optimizer_sa as sa
         random.seed(0)
-        seq, _ = sa.simulated_annealing(n_iterations=500)
+        seq, _, _hist = sa.simulated_annealing(n_iterations=500)
         n = len(seq)
         half = n // 2
         assert seq[:half] == seq[half:][::-1], "SA result is not symmetric"

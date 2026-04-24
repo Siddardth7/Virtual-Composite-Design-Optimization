@@ -128,14 +128,16 @@ def collect_top3() -> list[dict]:
     print("Running SA optimizer across multiple seeds …")
     raw: list[tuple[float, list[int]]] = []
 
+    all_histories: list[list[tuple[int, float]]] = []
     for seed in SA_SEEDS:
         random.seed(seed)
-        seq, obj = simulated_annealing(
+        seq, obj, hist = simulated_annealing(
             n_iterations=SA_ITERATIONS,
             initial_temp=SA_INITIAL_TEMP,
             cooling_rate=SA_COOLING,
         )
         raw.append((obj, seq))
+        all_histories.append(hist)
         print(f"  seed={seed:4d}  obj={obj:.4e}  n_plies={len(seq):3d}  {seq}")
 
     # deduplicate (exact sequence match)
@@ -166,7 +168,31 @@ def collect_top3() -> list[dict]:
     for i, c in enumerate(evaluated, 1):
         c["clt_rank"] = i
 
-    return evaluated[:3]
+    return evaluated[:3], all_histories
+
+
+def save_convergence_plot(
+    all_histories: list[list[tuple[int, float]]],
+    seeds: list[int],
+) -> Path:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for seed, hist in zip(seeds, all_histories):
+        iters = [h[0] for h in hist]
+        objs  = [h[1] for h in hist]
+        ax.plot(iters, objs, alpha=0.6, label=f"seed={seed}")
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("Best Objective")
+    ax.set_title("SA Convergence History (all seeds)")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+    out = ROOT / "figures" / "sa_convergence.png"
+    fig.tight_layout()
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -177,7 +203,9 @@ def main() -> None:
     print("\n=== sa_spotcheck.py — D11: SA Spot-Check ===\n")
 
     # ── 1. get top 3 SA candidates ────────────────────────────────────────
-    top3 = collect_top3()
+    top3, all_histories = collect_top3()
+    conv_plot = save_convergence_plot(all_histories, SA_SEEDS)
+    print(f"  Saved convergence plot: {conv_plot.relative_to(ROOT)}")
 
     # ── 2. FEA run (if ccx available) ────────────────────────────────────
     ccx = find_ccx()

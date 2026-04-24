@@ -104,13 +104,19 @@ def simulated_annealing(
     n_iterations: int = 10000,
     initial_temp: float = 1.0,
     cooling_rate: float = 0.999,
-) -> tuple[list[int], float]:
+    record_interval: int = 100,
+) -> tuple[list[int], float, list[tuple[int, float]]]:
+    """
+    Returns (best_full_seq, best_obj, history).
+    history: list of (iteration, best_obj) sampled every record_interval steps.
+    """
     current_length = random.randint(min_half, max_half)
     current_half = [random.choice(allowed_angles) for _ in range(current_length)]
     current_obj = objective(current_half)
     best_half = copy.deepcopy(current_half)
     best_obj = current_obj
     T = initial_temp
+    history: list[tuple[int, float]] = []
 
     for it in range(n_iterations):
         moves = ['change']
@@ -137,16 +143,18 @@ def simulated_annealing(
             if current_obj < best_obj:
                 best_half = copy.deepcopy(current_half)
                 best_obj = current_obj
-        T *= cooling_rate
+        T = max(T * cooling_rate, 1e-300)
+        if (it + 1) % record_interval == 0:
+            history.append((it + 1, best_obj))
         if (it + 1) % 1000 == 0:
             print(f"Iteration {it+1}: Best Obj = {best_obj:.3e}, Half sequence length = {len(best_half)}")
 
     best_full_seq = best_half + best_half[::-1]
-    return best_full_seq, best_obj
+    return best_full_seq, best_obj, history
 
 
 if __name__ == "__main__":
-    best_seq, best_value = simulated_annealing(n_iterations=10000)
+    best_seq, best_value, _ = simulated_annealing(n_iterations=10000)
     print("\nOptimized Layup Sequence (degrees):")
     print(best_seq)
     print("\nNumber of plies (full laminate):", len(best_seq))

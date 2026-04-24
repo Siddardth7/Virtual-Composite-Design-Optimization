@@ -211,7 +211,7 @@ python src/main.py
 | Solves mid-plane strains and curvatures under unit moment Mx | Printed to terminal |
 | Computes Navier SSSS centre deflection at q = 1 kPa | Printed to terminal |
 | Exports per-ply stress/strain/failure index table | `data/sweeps/baseline_ply_summary.csv` |
-| Sweeps Ex_eff from 0° to 90° in 1° increments | `data/sweeps/angle_sweep_ex.csv` |
+| Sweeps Ex_eff from 0° to 90° in 5° increments | `data/sweeps/angle_sweep_ex.csv` |
 | Saves angle sweep plot | `figures/angle_sweep_ex.png` |
 
 **Expected terminal output:**
@@ -474,7 +474,7 @@ result = evaluate_laminate(
 # Access per-ply results
 for i, ply in enumerate(result["plies"]):
     print(f"Ply {i+1:2d} ({ply['angle_deg']:4.0f}°): "
-          f"σ₁ = {ply['sig_12_bot'][0]/1e6:8.3f} MPa | "
+          f"σ₁ = {ply['sig_bot_12'][0]/1e6:8.3f} MPa | "
           f"Hashin FT = {ply['hashin_FT_bot']:.4f} | "
           f"Hashin MT = {ply['hashin_MT_bot']:.4f}")
 ```
@@ -484,10 +484,10 @@ for i, ply in enumerate(result["plies"]):
 | Key | Description |
 |-----|-------------|
 | `angle_deg` | Ply orientation in degrees |
-| `sig_xy_top/bot` | Global stress [σₓ, σᵧ, τₓᵧ] at top/bottom interface (Pa) |
-| `sig_12_top/bot` | Local stress [σ₁, σ₂, τ₁₂] at top/bottom interface (Pa) |
-| `eps_xy_top/bot` | Global strain at top/bottom interface |
-| `eps_12_top/bot` | Local strain at top/bottom interface |
+| `sig_top_xy` / `sig_bot_xy` | Global stress [σₓ, σᵧ, τₓᵧ] at top/bottom interface (Pa) |
+| `sig_top_12` / `sig_bot_12` | Local stress [σ₁, σ₂, τ₁₂] at top/bottom interface (Pa) |
+| `eps_top_xy` / `eps_bot_xy` | Global strain at top/bottom interface |
+| `eps_top_12` / `eps_bot_12` | Local strain at top/bottom interface |
 | `tsai_wu_top/bot` | Tsai–Wu failure index (FI ≥ 1 → failure) |
 | `hashin_FT_top/bot` | Hashin fibre tension index |
 | `hashin_FC_top/bot` | Hashin fibre compression index |

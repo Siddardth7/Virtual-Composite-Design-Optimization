@@ -16,7 +16,6 @@ CLT-only mode — CLT ranking is reliable (D06 checkpoint showed <1% CLT/FEA err
 from __future__ import annotations
 import copy
 import random
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -33,7 +32,7 @@ _ROOT = _SRC.parent
 sys.path.insert(0, str(_SRC))
 sys.path.insert(0, str(_ROOT))
 
-from utils import load_materials, deg2rad
+from utils import load_materials, deg2rad, find_ccx
 from clt import Ply, laminate_abd, navier_center_deflection
 
 # ── plate constants (match generate_inp.py / compare_clt_fea.py) ─────────────
@@ -79,14 +78,6 @@ def clt_deflection(layup_deg: list[int]) -> float:
 # ════════════════════════════════════════════════════════════════════════════
 # FEA runner (requires ccx)
 # ════════════════════════════════════════════════════════════════════════════
-
-def _find_ccx() -> str | None:
-    repo_ccx = FEA_DIR / "ccx"
-    if repo_ccx.is_symlink() and repo_ccx.resolve().exists():
-        return str(repo_ccx)
-    if repo_ccx.exists() and not repo_ccx.is_symlink():
-        return str(repo_ccx)
-    return shutil.which("ccx")
 
 
 def fea_deflection(layup_deg: list[int], ccx: str, run_id: str) -> float | None:
@@ -190,7 +181,7 @@ def main() -> None:
     top3 = collect_top3()
 
     # ── 2. FEA run (if ccx available) ────────────────────────────────────
-    ccx = _find_ccx()
+    ccx = find_ccx()
     fea_mode = ccx is not None
     if fea_mode:
         print(f"  CalculiX found at: {ccx}")

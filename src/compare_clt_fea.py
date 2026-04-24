@@ -46,7 +46,7 @@ _SRC = Path(__file__).resolve().parent
 _ROOT = _SRC.parent
 sys.path.insert(0, str(_SRC))
 sys.path.insert(0, str(_ROOT))
-from utils import load_materials, deg2rad
+from utils import load_materials, deg2rad, find_ccx
 from clt import (
     Ply,
     laminate_abd,
@@ -140,18 +140,6 @@ def compute_clt_values() -> dict:
 # 2. FEA results loader
 # ════════════════════════════════════════════════════════════════════════════
 
-def _find_ccx() -> str | None:
-    """Return path to ccx binary if available on PATH or as fea/ccx symlink."""
-    # check symlink in repo first
-    repo_ccx = FEA_DIR / "ccx"
-    if repo_ccx.exists() and not repo_ccx.is_symlink():
-        return str(repo_ccx)
-    if repo_ccx.is_symlink() and repo_ccx.resolve().exists():
-        return str(repo_ccx)
-    # fall back to PATH
-    import shutil
-    return shutil.which("ccx")
-
 
 def _run_fea(ccx_bin: str) -> dict:
     """
@@ -191,7 +179,7 @@ def load_fea_values() -> dict:
       1. Running CalculiX if ccx is on PATH.
       2. Loading from fea/results/fea_summary.csv (pre-computed).
     """
-    ccx = _find_ccx()
+    ccx = find_ccx()
     if ccx:
         print(f"  ccx found at: {ccx}")
         try:

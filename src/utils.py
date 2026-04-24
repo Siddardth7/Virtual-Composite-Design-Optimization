@@ -5,9 +5,10 @@ Normalizes materials.csv columns to:
 name, E1, E2, G12, v12, density, t_ply  (all SI)
 """
 from __future__ import annotations
+import math
+import shutil
 import pandas as pd
 from pathlib import Path
-import math
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
@@ -85,3 +86,20 @@ def deg2rad(angle_deg: float) -> float:
 
 def rad2deg(angle_rad: float) -> float:
     return math.degrees(angle_rad)
+
+FEA_DIR = Path(__file__).resolve().parents[1] / "fea"
+
+def find_ccx() -> str | None:
+    """Return path to CalculiX binary, or None if not available.
+
+    Checks (in order):
+    1. fea/ccx symlink in the repo (resolves if valid)
+    2. fea/ccx as a regular file
+    3. system PATH via shutil.which
+    """
+    repo_ccx = FEA_DIR / "ccx"
+    if repo_ccx.is_symlink() and repo_ccx.resolve().exists():
+        return str(repo_ccx)
+    if repo_ccx.exists() and not repo_ccx.is_symlink():
+        return str(repo_ccx)
+    return shutil.which("ccx")
